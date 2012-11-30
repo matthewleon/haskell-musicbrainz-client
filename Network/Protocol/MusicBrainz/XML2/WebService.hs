@@ -7,24 +7,21 @@ module Network.Protocol.MusicBrainz.XML2.WebService (
 
 import Network.Protocol.MusicBrainz.XML2.Types
 
-import Control.Monad (when, replicateM)
-import Control.Monad.IO.Class (MonadIO, liftIO)
+import Control.Monad.IO.Class (MonadIO)
 import Control.Monad.Trans.Control (MonadBaseControl)
 import Data.ByteString (ByteString)
 import qualified Data.ByteString.Lazy as BL
-import Data.Conduit (Source, Sink, ($=), ($$), MonadResource, MonadThrow, runResourceT)
+import Data.Conduit (Source, Sink, ($=), ($$), MonadThrow, runResourceT)
 import Data.Conduit.List (sourceList)
 import Data.List (intercalate)
 import Data.Maybe (fromMaybe)
 import Data.Text (Text)
 import qualified Data.Text as T
 import qualified Data.Text.Read as TR
-import Data.Time.Calendar (Day)
 import Data.Time.Format (parseTime)
 import qualified Data.Vector as V
 import Data.XML.Types (Event)
-import Network.HTTP.Conduit (http, withManager, parseUrl, Response(..), simpleHttp)
-import Network.HTTP.Types (ok200)
+import Network.HTTP.Conduit (simpleHttp)
 import System.Locale (defaultTimeLocale)
 import Text.XML.Stream.Parse (parseBytes, def, content, tagNoAttr, tagName, requireAttr, force, many)
 
@@ -86,7 +83,7 @@ parseRelease = tagName "{http://musicbrainz.org/ns/mmd-2.0#}release" (requireAtt
     date <- tagNoAttr "{http://musicbrainz.org/ns/mmd-2.0#}date" content
     country <- tagNoAttr "{http://musicbrainz.org/ns/mmd-2.0#}country" content
     barcode <- tagNoAttr "{http://musicbrainz.org/ns/mmd-2.0#}barcode" content
-    asin <- tagNoAttr "{http://musicbrainz.org/ns/mmd-2.0#}asin" content
+    amazonASIN <- tagNoAttr "{http://musicbrainz.org/ns/mmd-2.0#}asin" content
     media <- tagName "{http://musicbrainz.org/ns/mmd-2.0#}medium-list" (requireAttr "count") $ \_ -> many parseMedium
     return Release {
         _releaseId = MBID rid
@@ -99,7 +96,7 @@ parseRelease = tagName "{http://musicbrainz.org/ns/mmd-2.0#}release" (requireAtt
       , _releaseDate = parseTime defaultTimeLocale "%Y-%m-%d" . T.unpack =<< date
       , _releaseCountry = country
       , _releaseBarcode = barcode
-      , _releaseASIN = asin
+      , _releaseASIN = amazonASIN
       , _releaseMedia = V.fromList (fromMaybe [] media)
     }
 
@@ -116,7 +113,7 @@ parseMedium :: MonadThrow m => Sink Event m (Maybe Medium)
 parseMedium = tagNoAttr "{http://musicbrainz.org/ns/mmd-2.0#}medium" $ do
     title <- tagNoAttr "{http://musicbrainz.org/ns/mmd-2.0#}title" content
     position <- tagNoAttr "{http://musicbrainz.org/ns/mmd-2.0#}position" content
-    tracklist <- tagName "{http://musicbrainz.org/ns/mmd-2.0#}track-list" (requireAttr "count" >>= \c -> requireAttr "offset" >>= \o -> return (c, o)) $ \(c',o') -> do
+    tracklist <- tagName "{http://musicbrainz.org/ns/mmd-2.0#}track-list" (requireAttr "count" >>= \c -> requireAttr "offset" >>= \o -> return (c, o)) $ \(_,o') -> do
         tracks <- many parseTrack
         return TrackList { _trackListOffset = forceReadDec o', _trackListTracks = V.fromList tracks }
     return Medium { _mediumTitle = title, _mediumPosition = fmap forceReadDec position, _mediumTrackList = tracklist }
