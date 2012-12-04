@@ -15,6 +15,7 @@ cabal-version:       >=1.8
 library
   exposed-modules: Network.Protocol.MusicBrainz.XML2.WebService
                  , Network.Protocol.MusicBrainz.XML2.Types
+                 , Network.Protocol.MusicBrainz.XML2.Utils
   build-depends: base          >= 4.5     && <5
                , transformers  >= 0.3
                , monad-control ==0.3.*
