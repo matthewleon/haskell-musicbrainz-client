@@ -18,7 +18,7 @@ newtype MBID = MBID { unMBID :: Text }
 
 data Release = Release {
     _releaseId :: MBID
-  , _releaseTitle :: Maybe Text
+  , _releaseTitle :: Text
   , _releaseStatus :: Maybe Text
   , _releaseQuality :: Maybe Text
   , _releasePackaging :: Maybe Text

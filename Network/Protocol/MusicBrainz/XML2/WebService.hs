@@ -74,7 +74,7 @@ forceReadDec = (\(Right (d, _)) -> d) . TR.decimal
 
 parseRelease :: MonadThrow m => Sink Event m (Maybe Release)
 parseRelease = tagName "{http://musicbrainz.org/ns/mmd-2.0#}release" (requireAttr "id") $ \rid -> do
-    title <- tagNoAttr "{http://musicbrainz.org/ns/mmd-2.0#}title" content
+    title <- force "title required" (tagNoAttr "{http://musicbrainz.org/ns/mmd-2.0#}title" content)
     status <- tagNoAttr "{http://musicbrainz.org/ns/mmd-2.0#}status" content
     quality <- tagNoAttr "{http://musicbrainz.org/ns/mmd-2.0#}quality" content
     packaging <- tagNoAttr "{http://musicbrainz.org/ns/mmd-2.0#}packaging" content
