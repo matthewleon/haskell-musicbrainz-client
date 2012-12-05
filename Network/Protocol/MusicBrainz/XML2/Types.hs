@@ -63,6 +63,7 @@ data Recording = Recording {
 
 data NameCredit = NameCredit {
     _nameCreditArtistId :: MBID
+  , _nameCreditJoinPhrase :: Maybe Text
   , _nameCreditArtistName :: Maybe Text
   , _nameCreditArtistSortName :: Maybe Text
 } deriving (Eq, Show)

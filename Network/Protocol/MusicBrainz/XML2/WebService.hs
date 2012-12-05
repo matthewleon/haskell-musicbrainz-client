@@ -23,7 +23,7 @@ import qualified Data.Vector as V
 import Data.XML.Types (Event)
 import Network.HTTP.Conduit (simpleHttp)
 import System.Locale (defaultTimeLocale)
-import Text.XML.Stream.Parse (parseBytes, def, content, tagNoAttr, tagName, requireAttr, force, many)
+import Text.XML.Stream.Parse (parseBytes, def, content, tagNoAttr, tagName, requireAttr, optionalAttr, force, many)
 
 -- not until conduit 0.5
 sourceLbs :: Monad m => BL.ByteString -> Source m ByteString
@@ -63,10 +63,10 @@ parseRecording = tagName "{http://musicbrainz.org/ns/mmd-2.0#}recording" (requir
     return Recording { _recordingId = MBID rid, _recordingTitle = title, _recordingLength = fmap forceReadDec len, _recordingArtistCredit = fromMaybe [] ncs }
 
 parseNameCredits :: MonadThrow m => Sink Event m (Maybe NameCredit)
-parseNameCredits = tagNoAttr "{http://musicbrainz.org/ns/mmd-2.0#}name-credit" $ force "artist required" (tagName "{http://musicbrainz.org/ns/mmd-2.0#}artist" (requireAttr "id") $ \aid -> do
+parseNameCredits = tagName "{http://musicbrainz.org/ns/mmd-2.0#}name-credit" (optionalAttr "{http://musicbrainz.org/ns/mmd-2.0#}joinphrase") $ \mjp -> force "artist required" (tagName "{http://musicbrainz.org/ns/mmd-2.0#}artist" (requireAttr "id") $ \aid -> do
     name <- tagNoAttr "{http://musicbrainz.org/ns/mmd-2.0#}name" content
     sortName <- tagNoAttr "{http://musicbrainz.org/ns/mmd-2.0#}sort-name" content
-    return NameCredit { _nameCreditArtistId = MBID aid, _nameCreditArtistName = name, _nameCreditArtistSortName = sortName }
+    return NameCredit { _nameCreditArtistId = MBID aid, _nameCreditJoinPhrase = mjp, _nameCreditArtistName = name, _nameCreditArtistSortName = sortName }
     )
 
 forceReadDec :: Integral a => Text -> a
