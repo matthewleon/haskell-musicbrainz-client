@@ -1,5 +1,5 @@
 name:                MusicBrainz
-version:             0.0
+version:             0.1
 synopsis:            interface to MusicBrainz XML2 web service
 description:         interface to MusicBrainz XML2 web service
 homepage:            http://floss.scru.org/hMusicBrainz
@@ -40,4 +40,4 @@ source-repository head
 source-repository this
   type:     git
   location: git://anonscm.debian.org/users/clint/MusicBrainz.git
-  tag:      hMB/0.0
+  tag:      hMB/0.1
