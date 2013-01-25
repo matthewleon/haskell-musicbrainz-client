@@ -23,7 +23,7 @@ library
                , conduit       >= 0.4     && <0.6
                , text          ==0.11.*
                , time
-               , vector        ==0.9.*
+               , vector        >=0.9
                , xml-types     ==0.3.*
                , http-conduit  >= 1.4     && <1.9
                , http-types    >= 0.6     && <0.8
