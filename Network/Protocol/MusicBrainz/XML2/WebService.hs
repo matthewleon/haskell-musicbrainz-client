@@ -107,8 +107,10 @@ parseRelease = tagName "{http://musicbrainz.org/ns/mmd-2.0#}release" (liftA2 (,)
     _ <- parseReleaseGroup
     date <- tagNoAttr "{http://musicbrainz.org/ns/mmd-2.0#}date" content
     country <- tagNoAttr "{http://musicbrainz.org/ns/mmd-2.0#}country" content
+    rel <- tagName "{http://musicbrainz.org/ns/mmd-2.0#}release-event-list" (requireAttr "count") $ \_ -> many parseReleaseEvent
     barcode <- tagNoAttr "{http://musicbrainz.org/ns/mmd-2.0#}barcode" content
     amazonASIN <- tagNoAttr "{http://musicbrainz.org/ns/mmd-2.0#}asin" content
+    coverArtArchive <- parseCoverArtArchive
     _ <- tagNoAttr "{http://musicbrainz.org/ns/mmd-2.0#}label-info-list" $ parseLabelInfo
     media <- tagName "{http://musicbrainz.org/ns/mmd-2.0#}medium-list" (requireAttr "count") $ \_ -> (tagNoAttr "{http://musicbrainz.org/ns/mmd-2.0#}track-count" content >> many parseMedium)
     return (maybe 0 forceReadDec score, Release {
@@ -121,8 +123,10 @@ parseRelease = tagName "{http://musicbrainz.org/ns/mmd-2.0#}release" (liftA2 (,)
       , _releaseArtistCredit = fromMaybe [] ncs
       , _releaseDate = parseTime defaultTimeLocale "%Y-%m-%d" . T.unpack =<< date
       , _releaseCountry = country
+      , _releaseEvents = fromMaybe [] rel
       , _releaseBarcode = barcode
       , _releaseASIN = amazonASIN
+      , _releaseCoverArtArchive = coverArtArchive
       , _releaseMedia = V.fromList (fromMaybe [] media)
     })
 
@@ -153,13 +157,14 @@ parseMedium = tagNoAttr "{http://musicbrainz.org/ns/mmd-2.0#}medium" $ do
       }
 
 parseTrack :: MonadThrow m => Sink Event m (Maybe Track)
-parseTrack = tagNoAttr "{http://musicbrainz.org/ns/mmd-2.0#}track" $ do
+parseTrack = tagName "{http://musicbrainz.org/ns/mmd-2.0#}track" (requireAttr "id") $ \i -> do
     position <- tagNoAttr "{http://musicbrainz.org/ns/mmd-2.0#}position" content
     number <- tagNoAttr "{http://musicbrainz.org/ns/mmd-2.0#}number" content
     len <- tagNoAttr "{http://musicbrainz.org/ns/mmd-2.0#}length" content
     recording <- force "recording required" parseRecording
     return Track {
-      _trackPosition = fmap forceReadDec position
+      _trackId = MBID i
+    , _trackPosition = fmap forceReadDec position
     , _trackNumber = fmap forceReadDec number
     , _trackLength = fmap forceReadDec len
     , _trackRecording = recording
@@ -199,6 +204,43 @@ parseLabel = tagName "{http://musicbrainz.org/ns/mmd-2.0#}label" (requireAttr "i
     , _labelName = name
     , _labelSortName = sortname
     , _labelLabelCode = labelcode
+    }
+
+parseReleaseEvent :: MonadThrow m => Sink Event m (Maybe ReleaseEvent)
+parseReleaseEvent = tagNoAttr "{http://musicbrainz.org/ns/mmd-2.0#}release-event" $ do
+    date <- tagNoAttr "{http://musicbrainz.org/ns/mmd-2.0#}date" content
+    area <- parseArea
+    return ReleaseEvent {
+      _releaseEventDate = parseTime defaultTimeLocale "%Y-%m-%d" . T.unpack =<< date
+    , _releaseEventArea = area
+    }
+
+parseArea :: MonadThrow m => Sink Event m (Maybe Area)
+parseArea = tagName "{http://musicbrainz.org/ns/mmd-2.0#}area" (requireAttr "id") $ \i -> do
+    name <- tagNoAttr "{http://musicbrainz.org/ns/mmd-2.0#}name" content
+    sortname <- tagNoAttr "{http://musicbrainz.org/ns/mmd-2.0#}sort-name" content
+    isocodes <- tagNoAttr "{http://musicbrainz.org/ns/mmd-2.0#}iso-3166-1-code-list" $ many parseISO3166Code
+    return Area {
+      _areaId = MBID i
+    , _areaName = name
+    , _areaSortName = sortname
+    , _areaISO3166Codes = fromMaybe [] isocodes
+    }
+
+parseISO3166Code :: MonadThrow m => Sink Event m (Maybe ISO3166Code)
+parseISO3166Code = tagNoAttr "{http://musicbrainz.org/ns/mmd-2.0#}iso-3166-1-code" (content >>= (return . ISO3166Code))
+
+parseCoverArtArchive :: MonadThrow m => Sink Event m (Maybe CoverArtArchive)
+parseCoverArtArchive = tagNoAttr "{http://musicbrainz.org/ns/mmd-2.0#}cover-art-archive" $ do
+    artwork <- tagNoAttr "{http://musicbrainz.org/ns/mmd-2.0#}artwork" content
+    count <- tagNoAttr "{http://musicbrainz.org/ns/mmd-2.0#}count" content
+    front <- tagNoAttr "{http://musicbrainz.org/ns/mmd-2.0#}front" content
+    back <- tagNoAttr "{http://musicbrainz.org/ns/mmd-2.0#}back" content
+    return CoverArtArchive {
+      _coverArtArchiveArtwork = artwork
+    , _coverArtArchiveCount = count
+    , _coverArtArchiveFront = front
+    , _coverArtArchiveBack = back
     }
 
 searchReleasesByArtistAndRelease :: (MonadIO m, MonadBaseControl IO m, MonadThrow m) => Text -> Text -> Maybe Int -> Maybe Int -> m [(Int, Release)]

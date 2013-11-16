@@ -11,6 +11,10 @@ module Network.Protocol.MusicBrainz.XML2.Types (
   , ReleaseGroup(..)
   , LabelInfo(..)
   , Label(..)
+  , ReleaseEvent(..)
+  , Area(..)
+  , ISO3166Code(..)
+  , CoverArtArchive(..)
 ) where
 
 import Data.Text (Text)
@@ -30,8 +34,10 @@ data Release = Release {
   , _releaseArtistCredit :: [NameCredit]
   , _releaseDate :: Maybe Day
   , _releaseCountry :: Maybe Text
+  , _releaseEvents :: [ReleaseEvent]
   , _releaseBarcode :: Maybe Text
   , _releaseASIN :: Maybe Text
+  , _releaseCoverArtArchive :: Maybe CoverArtArchive
   , _releaseMedia :: Vector Medium
 } deriving (Eq, Show)
 
@@ -58,7 +64,8 @@ data TrackList = TrackList {
 } deriving (Eq, Show)
 
 data Track = Track {
-    _trackPosition :: Maybe Integer
+    _trackId :: MBID
+  , _trackPosition :: Maybe Integer
   , _trackNumber :: Maybe Integer
   , _trackLength :: Maybe Integer
   , _trackRecording :: Recording
@@ -98,3 +105,25 @@ data Label = Label {
   , _labelSortName :: Maybe Text
   , _labelLabelCode :: Maybe Text
 } deriving (Eq, Show)
+
+data ReleaseEvent = ReleaseEvent {
+    _releaseEventDate :: Maybe Day
+  , _releaseEventArea :: Maybe Area
+} deriving (Eq, Show)
+
+data Area = Area {
+    _areaId :: MBID
+  , _areaName :: Maybe Text
+  , _areaSortName :: Maybe Text
+  , _areaISO3166Codes :: [ISO3166Code]
+} deriving (Eq, Show)
+
+data CoverArtArchive = CoverArtArchive {
+    _coverArtArchiveArtwork :: Maybe Text
+  , _coverArtArchiveCount :: Maybe Text
+  , _coverArtArchiveFront :: Maybe Text
+  , _coverArtArchiveBack :: Maybe Text
+} deriving (Eq, Show)
+
+newtype ISO3166Code = ISO3166Code { unISO3166Code :: Text }
+    deriving (Eq, Show)
