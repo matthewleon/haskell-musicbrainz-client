@@ -11,8 +11,9 @@ import Network.Protocol.MusicBrainz.Types
 import Control.Applicative (liftA2, (<|>))
 import Control.Monad.IO.Class (MonadIO)
 import Control.Monad.Trans.Control (MonadBaseControl)
+import Control.Monad.Trans.Resource (MonadThrow, runResourceT)
 import qualified Data.ByteString.Lazy as BL
-import Data.Conduit (Consumer, ($=), ($$), MonadThrow, runResourceT)
+import Data.Conduit (Consumer, ($=), ($$))
 import Data.Conduit.Binary (sourceLbs)
 import Data.List (intercalate)
 import Data.Maybe (fromMaybe)

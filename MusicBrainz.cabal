@@ -23,8 +23,10 @@ library
                , monad-control ==0.3.*
                , bytestring
                , conduit       >= 1.0.0
+               , conduit-extra >= 1.0.0
                , text
                , time
+               , resourcet
                , vector        >=0.9
                , xml-types     ==0.3.*
                , http-conduit  >= 1.8.8
