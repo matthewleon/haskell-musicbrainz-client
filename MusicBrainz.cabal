@@ -20,18 +20,18 @@ library
                  , Network.Protocol.MusicBrainz.XML2.WebService
   build-depends: base          >= 4.5     && <5
                , transformers  >= 0.3
-               , monad-control ==0.3.*
+               , monad-control >= 0.3
                , bytestring
                , conduit       >= 1.0.0
                , conduit-extra >= 1.0.0
                , text
                , time
                , resourcet
-               , vector        >=0.9
-               , xml-types     ==0.3.*
+               , vector        >= 0.9
+               , xml-types     >= 0.3
                , http-conduit  >= 1.8.8
                , http-types    >= 0.6
-               , old-locale    ==1.0.*
+               , old-locale    >= 1.0
                , xml-conduit   >= 1.1
                , HTTP          >= 4000.0
                , aeson         >= 0.6.1
