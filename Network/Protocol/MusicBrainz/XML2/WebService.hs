@@ -25,7 +25,7 @@ import qualified Data.Vector as V
 import Data.XML.Types (Event)
 import Network.HTTP.Base (urlEncode)
 import Network.HTTP.Conduit (simpleHttp)
-import System.Locale (defaultTimeLocale)
+import Data.Time.Locale.Compat (defaultTimeLocale)
 import Text.XML.Stream.Parse (parseBytes, def, content, tagNoAttr, tagName, requireAttr, optionalAttr, force, many, AttrParser)
 import Text.XML (Name(..))
 

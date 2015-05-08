@@ -28,7 +28,7 @@ import Data.Aeson (FromJSON(..), (.:), (.:?), Value(..))
 import Data.Maybe (fromMaybe)
 import qualified Data.Text as T
 import Data.Time.Format (parseTime)
-import System.Locale (defaultTimeLocale)
+import Data.Time.Locale.Compat (defaultTimeLocale)
 
 newtype MBID = MBID { unMBID :: Text }
     deriving (Eq, Show)
