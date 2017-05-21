@@ -9,7 +9,6 @@ module Network.Protocol.MusicBrainz.JSON.WebService (
 import Network.Protocol.MusicBrainz.Types
 
 import Control.Monad.IO.Class (MonadIO)
-import Control.Monad.Trans.Control (MonadBaseControl)
 import Data.Aeson (eitherDecode)
 import qualified Data.ByteString.Lazy as BL
 import Data.List (intercalate)
@@ -38,17 +37,17 @@ musicBrainzWSSearch reqtype query mlimit moffset = do
         offset (Just o) = "&offset=" ++ show o
         fj = "&fmt=json"
 
-getRecordingById :: (MonadBaseControl IO m, MonadIO m) => MBID -> m (Either String Recording)
+getRecordingById :: MonadIO m => MBID -> m (Either String Recording)
 getRecordingById mbid = do
     lbs <- musicBrainzWSLookup "recording" (unMBID mbid) ["artist-credits"]
     return $ eitherDecode lbs
 
-getReleaseById :: (MonadBaseControl IO m, MonadIO m) => MBID -> m (Either String Release)
+getReleaseById :: MonadIO m => MBID -> m (Either String Release)
 getReleaseById mbid = do
     lbs <- musicBrainzWSLookup "release" (unMBID mbid) ["recordings", "artist-credits"]
     return $ eitherDecode lbs
 
-searchReleasesByArtistAndRelease :: (MonadIO m, MonadBaseControl IO m)  => Text -> Text -> Maybe Int -> Maybe Int -> m (Either String [(Int, Release)])
+searchReleasesByArtistAndRelease :: MonadIO m => Text -> Text -> Maybe Int -> Maybe Int -> m (Either String [(Int, Release)])
 searchReleasesByArtistAndRelease artist release mlimit moffset = do
     lbs <- musicBrainzWSSearch "release" (T.concat ["artist:\"", artist, "\" AND release:\"", release, "\""]) mlimit moffset
     return $ eitherDecode lbs
