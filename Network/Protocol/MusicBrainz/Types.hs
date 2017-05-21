@@ -27,7 +27,7 @@ import Control.Monad (mzero)
 import Data.Aeson (FromJSON(..), (.:), (.:?), Value(..))
 import Data.Maybe (fromMaybe)
 import qualified Data.Text as T
-import Data.Time.Format (parseTime)
+import Data.Time.Format (parseTimeM)
 import Data.Time.Locale.Compat (defaultTimeLocale)
 
 newtype MBID = MBID { unMBID :: Text }
@@ -59,7 +59,7 @@ instance FromJSON Release where
                                  v .:? "packaging" <*>
                                  v .:? "text-representation" <*>
                                  v .: "artist-credit" <*>
-                                 ((parseTime defaultTimeLocale "%Y-%m-%d" . T.unpack =<<) <$> v .:? "date") <*>
+                                 ((parseTimeM True defaultTimeLocale "%Y-%m-%d" . T.unpack =<<) <$> v .:? "date") <*>
                                  v .:? "country" <*>
                                  v .: "release-events" <*>
                                  v .:? "barcode" <*>
@@ -188,7 +188,7 @@ data ReleaseEvent = ReleaseEvent {
 
 instance FromJSON ReleaseEvent where
     parseJSON (Object v) = ReleaseEvent <$>
-                                 ((parseTime defaultTimeLocale "%Y-%m-%d" . T.unpack =<<) <$> v .:? "date") <*>
+                                 ((parseTimeM True defaultTimeLocale "%Y-%m-%d" . T.unpack =<<) <$> v .:? "date") <*>
                                  v .:? "area"
     parseJSON _          = mzero
 

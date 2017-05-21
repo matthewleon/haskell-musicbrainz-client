@@ -20,7 +20,7 @@ import Data.Maybe (fromMaybe)
 import Data.Text (Text)
 import qualified Data.Text as T
 import qualified Data.Text.Read as TR
-import Data.Time.Format (parseTime)
+import Data.Time.Format (parseTimeM)
 import qualified Data.Vector as V
 import Data.XML.Types (Event)
 import Network.HTTP.Base (urlEncode)
@@ -118,7 +118,7 @@ parseRelease = tag' "{http://musicbrainz.org/ns/mmd-2.0#}release" (liftA2 (,) (r
       , _releasePackaging = packaging
       , _releaseTextRepresentation = tr
       , _releaseArtistCredit = fromMaybe [] ncs
-      , _releaseDate = parseTime defaultTimeLocale "%Y-%m-%d" . T.unpack =<< date
+      , _releaseDate = parseTimeM True defaultTimeLocale "%Y-%m-%d" . T.unpack =<< date
       , _releaseCountry = country
       , _releaseEvents = fromMaybe [] rel
       , _releaseBarcode = barcode
@@ -210,7 +210,7 @@ parseReleaseEvent = tagNoAttr "{http://musicbrainz.org/ns/mmd-2.0#}release-event
     date <- tagNoAttr "{http://musicbrainz.org/ns/mmd-2.0#}date" content
     area <- parseArea
     return ReleaseEvent {
-      _releaseEventDate = parseTime defaultTimeLocale "%Y-%m-%d" . T.unpack =<< date
+      _releaseEventDate = parseTimeM True defaultTimeLocale "%Y-%m-%d" . T.unpack =<< date
     , _releaseEventArea = area
     }
 
