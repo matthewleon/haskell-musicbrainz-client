@@ -1,7 +1,7 @@
 name:                MusicBrainz
 version:             0.3
-synopsis:            interface to MusicBrainz XML2 web service
-description:         interface to MusicBrainz XML2 web service
+synopsis:            interface to MusicBrainz XML2 and JSON web services
+description:         interface to MusicBrainz XML2 and JSON web services
 homepage:            http://floss.scru.org/hMusicBrainz
 license:             GPL-3
 license-file:        LICENSE
