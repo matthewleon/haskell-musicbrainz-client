@@ -26,7 +26,7 @@ import Data.XML.Types (Event)
 import Network.HTTP.Base (urlEncode)
 import Network.HTTP.Conduit (simpleHttp)
 import Data.Time.Locale.Compat (defaultTimeLocale)
-import Text.XML.Stream.Parse (parseBytes, def, content, tagNoAttr, tagName, requireAttr, optionalAttr, force, many, AttrParser)
+import Text.XML.Stream.Parse (parseBytes, def, content, tagNoAttr, tag', requireAttr, attr, force, many, AttrParser)
 import Text.XML (Name(..))
 
 musicBrainzWSLookup :: MonadIO m => Text -> Text -> [Text] -> m BL.ByteString
@@ -66,18 +66,18 @@ sinkReleases :: MonadThrow m => Consumer Event m [Release]
 sinkReleases = force "metadata required" (tagNoAttr "{http://musicbrainz.org/ns/mmd-2.0#}metadata" $ many (fmap (fmap snd) parseRelease))
 
 sinkReleaseList :: MonadThrow m => Consumer Event m [(Int, Release)]
-sinkReleaseList = force "metadata required" (tagName "{http://musicbrainz.org/ns/mmd-2.0#}metadata" (optionalAttr "created") $ \_ ->
-    force "release-list required" (tagName "{http://musicbrainz.org/ns/mmd-2.0#}release-list" (liftA2 (,) (requireAttr "count") (requireAttr "offset")) $ \_ -> many parseRelease))
+sinkReleaseList = force "metadata required" (tag' "{http://musicbrainz.org/ns/mmd-2.0#}metadata" (attr "created") $ \_ ->
+    force "release-list required" (tag' "{http://musicbrainz.org/ns/mmd-2.0#}release-list" (liftA2 (,) (requireAttr "count") (requireAttr "offset")) $ \_ -> many parseRelease))
 
 parseRecording :: MonadThrow m => Consumer Event m (Maybe Recording)
-parseRecording = tagName "{http://musicbrainz.org/ns/mmd-2.0#}recording" (requireAttr "id") $ \rid -> do
+parseRecording = tag' "{http://musicbrainz.org/ns/mmd-2.0#}recording" (requireAttr "id") $ \rid -> do
     title <- tagNoAttr "{http://musicbrainz.org/ns/mmd-2.0#}title" content
     len <- tagNoAttr "{http://musicbrainz.org/ns/mmd-2.0#}length" content
     ncs <- tagNoAttr "{http://musicbrainz.org/ns/mmd-2.0#}artist-credit" $ many parseArtistCredit
     return Recording { _recordingId = MBID rid, _recordingTitle = title, _recordingLength = fmap forceReadDec len, _recordingArtistCredit = fromMaybe [] ncs }
 
 parseArtistCredit :: MonadThrow m => Consumer Event m (Maybe ArtistCredit)
-parseArtistCredit = tagName "{http://musicbrainz.org/ns/mmd-2.0#}name-credit" (buggyJoinPhrase) $ \mjp -> force "artist required" (tagName "{http://musicbrainz.org/ns/mmd-2.0#}artist" (requireAttr "id") $ \aid -> do
+parseArtistCredit = tag' "{http://musicbrainz.org/ns/mmd-2.0#}name-credit" (buggyJoinPhrase) $ \mjp -> force "artist required" (tag' "{http://musicbrainz.org/ns/mmd-2.0#}artist" (requireAttr "id") $ \aid -> do
     name <- tagNoAttr "{http://musicbrainz.org/ns/mmd-2.0#}name" content
     sortName <- tagNoAttr "{http://musicbrainz.org/ns/mmd-2.0#}sort-name" content
     _ <- tagNoAttr "{http://musicbrainz.org/ns/mmd-2.0#}disambiguation" content
@@ -88,13 +88,13 @@ parseArtistCredit = tagName "{http://musicbrainz.org/ns/mmd-2.0#}name-credit" (b
 -- what's up with this
 buggyJoinPhrase :: AttrParser (Maybe Text)
 buggyJoinPhrase = fmap Just (requireAttr "{http://musicbrainz.org/ns/mmd-2.0#}joinphrase")
-    <|> optionalAttr "{http://musicbrainz.org/ns/mmd-2.0#}joinphrase" { nameNamespace = Nothing }
+    <|> attr "{http://musicbrainz.org/ns/mmd-2.0#}joinphrase" { nameNamespace = Nothing }
 
 forceReadDec :: Integral a => Text -> a
 forceReadDec = (\(Right (d, _)) -> d) . TR.decimal
 
 parseRelease :: MonadThrow m => Consumer Event m (Maybe (Int, Release))
-parseRelease = tagName "{http://musicbrainz.org/ns/mmd-2.0#}release" (liftA2 (,) (requireAttr "id") (optionalAttr "{http://musicbrainz.org/ns/ext#-2.0}score")) $ \(rid,score) -> do
+parseRelease = tag' "{http://musicbrainz.org/ns/mmd-2.0#}release" (liftA2 (,) (requireAttr "id") (attr "{http://musicbrainz.org/ns/ext#-2.0}score")) $ \(rid,score) -> do
     title <- force "title required" (tagNoAttr "{http://musicbrainz.org/ns/mmd-2.0#}title" content)
     status <- tagNoAttr "{http://musicbrainz.org/ns/mmd-2.0#}status" content
     quality <- tagNoAttr "{http://musicbrainz.org/ns/mmd-2.0#}quality" content
@@ -104,12 +104,12 @@ parseRelease = tagName "{http://musicbrainz.org/ns/mmd-2.0#}release" (liftA2 (,)
     _ <- parseReleaseGroup
     date <- tagNoAttr "{http://musicbrainz.org/ns/mmd-2.0#}date" content
     country <- tagNoAttr "{http://musicbrainz.org/ns/mmd-2.0#}country" content
-    rel <- tagName "{http://musicbrainz.org/ns/mmd-2.0#}release-event-list" (requireAttr "count") $ \_ -> many parseReleaseEvent
+    rel <- tag' "{http://musicbrainz.org/ns/mmd-2.0#}release-event-list" (requireAttr "count") $ \_ -> many parseReleaseEvent
     barcode <- tagNoAttr "{http://musicbrainz.org/ns/mmd-2.0#}barcode" content
     amazonASIN <- tagNoAttr "{http://musicbrainz.org/ns/mmd-2.0#}asin" content
     coverArtArchive <- parseCoverArtArchive
     _ <- tagNoAttr "{http://musicbrainz.org/ns/mmd-2.0#}label-info-list" $ parseLabelInfo
-    media <- tagName "{http://musicbrainz.org/ns/mmd-2.0#}medium-list" (requireAttr "count") $ \_ -> (tagNoAttr "{http://musicbrainz.org/ns/mmd-2.0#}track-count" content >> many parseMedium)
+    media <- tag' "{http://musicbrainz.org/ns/mmd-2.0#}medium-list" (requireAttr "count") $ \_ -> (tagNoAttr "{http://musicbrainz.org/ns/mmd-2.0#}track-count" content >> many parseMedium)
     return (maybe 0 forceReadDec score, Release {
         _releaseId = MBID rid
       , _releaseTitle = title
@@ -141,7 +141,7 @@ parseMedium = tagNoAttr "{http://musicbrainz.org/ns/mmd-2.0#}medium" $ do
     title <- tagNoAttr "{http://musicbrainz.org/ns/mmd-2.0#}title" content
     position <- tagNoAttr "{http://musicbrainz.org/ns/mmd-2.0#}position" content
     format <- tagNoAttr "{http://musicbrainz.org/ns/mmd-2.0#}format" content
-    Just med <- tagName "{http://musicbrainz.org/ns/mmd-2.0#}track-list" (liftA2 (,) (requireAttr "count") (optionalAttr "offset")) $ \(c,o) -> do -- not Just
+    Just med <- tag' "{http://musicbrainz.org/ns/mmd-2.0#}track-list" (liftA2 (,) (requireAttr "count") (attr "offset")) $ \(c,o) -> do -- not Just
         tracks <- many parseTrack
         return Medium {
             _mediumTitle = title
@@ -154,7 +154,7 @@ parseMedium = tagNoAttr "{http://musicbrainz.org/ns/mmd-2.0#}medium" $ do
     return med
 
 parseTrack :: MonadThrow m => Consumer Event m (Maybe Track)
-parseTrack = tagName "{http://musicbrainz.org/ns/mmd-2.0#}track" (requireAttr "id") $ \i -> do
+parseTrack = tag' "{http://musicbrainz.org/ns/mmd-2.0#}track" (requireAttr "id") $ \i -> do
     position <- tagNoAttr "{http://musicbrainz.org/ns/mmd-2.0#}position" content
     number <- tagNoAttr "{http://musicbrainz.org/ns/mmd-2.0#}number" content
     len <- tagNoAttr "{http://musicbrainz.org/ns/mmd-2.0#}length" content
@@ -170,7 +170,7 @@ parseTrack = tagName "{http://musicbrainz.org/ns/mmd-2.0#}track" (requireAttr "i
     }
 
 parseReleaseGroup :: MonadThrow m => Consumer Event m (Maybe ReleaseGroup)
-parseReleaseGroup = tagName "{http://musicbrainz.org/ns/mmd-2.0#}release-group" (liftA2 (,) (requireAttr "type") (requireAttr "id")) $ \(t,i) -> do
+parseReleaseGroup = tag' "{http://musicbrainz.org/ns/mmd-2.0#}release-group" (liftA2 (,) (requireAttr "type") (requireAttr "id")) $ \(t,i) -> do
     title <- tagNoAttr "{http://musicbrainz.org/ns/mmd-2.0#}title" content
     frd <- tagNoAttr "{http://musicbrainz.org/ns/mmd-2.0#}first-release-date" content
     pt <- tagNoAttr "{http://musicbrainz.org/ns/mmd-2.0#}primary-type" content
@@ -194,7 +194,7 @@ parseLabelInfo = tagNoAttr "{http://musicbrainz.org/ns/mmd-2.0#}label-info" $ do
     }
 
 parseLabel :: MonadThrow m => Consumer Event m (Maybe Label)
-parseLabel = tagName "{http://musicbrainz.org/ns/mmd-2.0#}label" (requireAttr "id") $ \i -> do
+parseLabel = tag' "{http://musicbrainz.org/ns/mmd-2.0#}label" (requireAttr "id") $ \i -> do
     name <- tagNoAttr "{http://musicbrainz.org/ns/mmd-2.0#}name" content
     sortname <- tagNoAttr "{http://musicbrainz.org/ns/mmd-2.0#}sort-name" content
     labelcode <- tagNoAttr "{http://musicbrainz.org/ns/mmd-2.0#}label-code" content
@@ -215,7 +215,7 @@ parseReleaseEvent = tagNoAttr "{http://musicbrainz.org/ns/mmd-2.0#}release-event
     }
 
 parseArea :: MonadThrow m => Consumer Event m (Maybe Area)
-parseArea = tagName "{http://musicbrainz.org/ns/mmd-2.0#}area" (requireAttr "id") $ \i -> do
+parseArea = tag' "{http://musicbrainz.org/ns/mmd-2.0#}area" (requireAttr "id") $ \i -> do
     name <- tagNoAttr "{http://musicbrainz.org/ns/mmd-2.0#}name" content
     sortname <- tagNoAttr "{http://musicbrainz.org/ns/mmd-2.0#}sort-name" content
     isocodes1 <- tagNoAttr "{http://musicbrainz.org/ns/mmd-2.0#}iso-3166-1-code-list" $ many parseISO3166Code
