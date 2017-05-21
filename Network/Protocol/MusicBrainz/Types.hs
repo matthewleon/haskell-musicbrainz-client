@@ -53,19 +53,19 @@ data Release = Release {
 instance FromJSON Release where
     parseJSON (Object v) = Release <$>
                                  (MBID <$> v .: "id") <*>
-				 v .: "title" <*>
-				 v .:? "status" <*>
-				 v .:? "quality" <*>
-				 v .:? "packaging" <*>
-				 v .:? "text-representation" <*>
-				 v .: "artist-credit" <*>
-				 ((parseTime defaultTimeLocale "%Y-%m-%d" . T.unpack =<<) <$> v .:? "date") <*>
-				 v .:? "country" <*>
-				 v .: "release-events" <*>
-				 v .:? "barcode" <*>
-				 v .:? "asin" <*>
-				 v .:? "cover-art-archive" <*>
-				 v .: "media"
+                                 v .: "title" <*>
+                                 v .:? "status" <*>
+                                 v .:? "quality" <*>
+                                 v .:? "packaging" <*>
+                                 v .:? "text-representation" <*>
+                                 v .: "artist-credit" <*>
+                                 ((parseTime defaultTimeLocale "%Y-%m-%d" . T.unpack =<<) <$> v .:? "date") <*>
+                                 v .:? "country" <*>
+                                 v .: "release-events" <*>
+                                 v .:? "barcode" <*>
+                                 v .:? "asin" <*>
+                                 v .:? "cover-art-archive" <*>
+                                 v .: "media"
     parseJSON _          = mzero
 
 data TextRepresentation = TextRepresentation {
@@ -75,8 +75,8 @@ data TextRepresentation = TextRepresentation {
 
 instance FromJSON TextRepresentation where
     parseJSON (Object v) = TextRepresentation <$>
-				 v .:? "language" <*>
-				 v .:? "script"
+                                 v .:? "language" <*>
+                                 v .:? "script"
     parseJSON _          = mzero
 
 data Medium = Medium {
@@ -90,12 +90,12 @@ data Medium = Medium {
 
 instance FromJSON Medium where
     parseJSON (Object v) = Medium <$>
-				 v .:? "title" <*>
-				 v .:? "position" <*>
-				 v .:? "format" <*>
-				 v .:  "track-count" <*>
-				 v .:? "track-offset" <*>
-				 v .:? "tracks"
+                                 v .:? "title" <*>
+                                 v .:? "position" <*>
+                                 v .:? "format" <*>
+                                 v .:  "track-count" <*>
+                                 v .:? "track-offset" <*>
+                                 v .:? "tracks"
     parseJSON _          = mzero
 
 data Track = Track {
@@ -109,12 +109,12 @@ data Track = Track {
 
 instance FromJSON Track where
     parseJSON (Object v) = Track <$>
-				 (MBID <$> v .: "id") <*>
-				 v .: "artist-credit" <*>
-				 v .:? "position" <*>
-				 v .:? "number" <*>
-				 v .:? "length" <*>
-				 v .: "recording"
+                                 (MBID <$> v .: "id") <*>
+                                 v .: "artist-credit" <*>
+                                 v .:? "position" <*>
+                                 v .:? "number" <*>
+                                 v .:? "length" <*>
+                                 v .: "recording"
     parseJSON _          = mzero
 
 data Recording = Recording {
@@ -126,10 +126,10 @@ data Recording = Recording {
 
 instance FromJSON Recording where
     parseJSON (Object v) = Recording <$>
-				 (MBID <$> v .: "id") <*>
-				 v .:? "title" <*>
-				 v .:? "length" <*>
-				 v .: "artist-credit"
+                                 (MBID <$> v .: "id") <*>
+                                 v .:? "title" <*>
+                                 v .:? "length" <*>
+                                 v .: "artist-credit"
     parseJSON _          = mzero
 
 data ArtistCredit = ArtistCredit {
@@ -140,9 +140,9 @@ data ArtistCredit = ArtistCredit {
 
 instance FromJSON ArtistCredit where
     parseJSON (Object v) = ArtistCredit <$>
-				 v .: "artist" <*>
-				 v .:? "joinphrase" <*>
-				 v .:? "name"
+                                 v .: "artist" <*>
+                                 v .:? "joinphrase" <*>
+                                 v .:? "name"
     parseJSON _          = mzero
 
 data Artist = Artist {
@@ -154,10 +154,10 @@ data Artist = Artist {
 
 instance FromJSON Artist where
     parseJSON (Object v) = Artist <$>
-				 (MBID <$> v .: "id") <*>
-				 v .:? "name" <*>
-				 v .:? "sort-name" <*>
-				 v .:? "disambiguation"
+                                 (MBID <$> v .: "id") <*>
+                                 v .:? "name" <*>
+                                 v .:? "sort-name" <*>
+                                 v .:? "disambiguation"
     parseJSON _          = mzero
 
 data ReleaseGroup = ReleaseGroup {
@@ -188,8 +188,8 @@ data ReleaseEvent = ReleaseEvent {
 
 instance FromJSON ReleaseEvent where
     parseJSON (Object v) = ReleaseEvent <$>
-				 ((parseTime defaultTimeLocale "%Y-%m-%d" . T.unpack =<<) <$> v .:? "date") <*>
-				 v .:? "area"
+                                 ((parseTime defaultTimeLocale "%Y-%m-%d" . T.unpack =<<) <$> v .:? "date") <*>
+                                 v .:? "area"
     parseJSON _          = mzero
 
 data Area = Area {
@@ -203,12 +203,12 @@ data Area = Area {
 
 instance FromJSON Area where
     parseJSON (Object v) = Area <$>
-				 (MBID <$> v .: "id") <*>
-				 v .:? "name" <*>
-				 v .:? "sort-name" <*>
-				 (fromMaybe [] <$> v .:? "iso_3166_1_codes") <*>
-				 (fromMaybe [] <$> v .:? "iso_3166_2_codes") <*>
-				 (fromMaybe [] <$> v .:? "iso_3166_3_codes")
+                                 (MBID <$> v .: "id") <*>
+                                 v .:? "name" <*>
+                                 v .:? "sort-name" <*>
+                                 (fromMaybe [] <$> v .:? "iso_3166_1_codes") <*>
+                                 (fromMaybe [] <$> v .:? "iso_3166_2_codes") <*>
+                                 (fromMaybe [] <$> v .:? "iso_3166_3_codes")
     parseJSON _          = mzero
 
 data CoverArtArchive = CoverArtArchive {
@@ -220,10 +220,10 @@ data CoverArtArchive = CoverArtArchive {
 
 instance FromJSON CoverArtArchive where
     parseJSON (Object v) = CoverArtArchive <$>
-				 v .:? "artwork" <*>
-				 v .:? "count" <*>
-				 v .:? "front" <*>
-				 v .:? "back"
+                                 v .:? "artwork" <*>
+                                 v .:? "count" <*>
+                                 v .:? "front" <*>
+                                 v .:? "back"
     parseJSON _          = mzero
 
 newtype ISO3166Code = ISO3166Code { unISO3166Code :: Text }

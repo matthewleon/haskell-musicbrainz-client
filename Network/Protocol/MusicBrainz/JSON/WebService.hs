@@ -24,8 +24,8 @@ musicBrainzWSLookup reqtype param incparams = do
     simpleHttp url
     where
         incs [] = ""
-	incs xs = ("?inc="++) . intercalate "+" . map T.unpack $ xs
-	fj = "&fmt=json"
+        incs xs = ("?inc="++) . intercalate "+" . map T.unpack $ xs
+        fj = "&fmt=json"
 
 musicBrainzWSSearch :: MonadIO m => Text -> Text -> Maybe Int -> Maybe Int -> m BL.ByteString
 musicBrainzWSSearch reqtype query mlimit moffset = do
@@ -33,10 +33,10 @@ musicBrainzWSSearch reqtype query mlimit moffset = do
     simpleHttp url
     where
         limit Nothing = ""
-	limit (Just l) = "&limit=" ++ show l
+        limit (Just l) = "&limit=" ++ show l
         offset Nothing = ""
-	offset (Just o) = "&offset=" ++ show o
-	fj = "&fmt=json"
+        offset (Just o) = "&offset=" ++ show o
+        fj = "&fmt=json"
 
 getRecordingById :: (MonadBaseControl IO m, MonadIO m) => MBID -> m (Either String Recording)
 getRecordingById mbid = do
