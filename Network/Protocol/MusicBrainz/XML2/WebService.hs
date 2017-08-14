@@ -9,7 +9,7 @@ module Network.Protocol.MusicBrainz.XML2.WebService (
 import Network.Protocol.MusicBrainz.Types
 
 import Control.Applicative (liftA2, (<|>))
-import Control.Monad.IO.Class (MonadIO)
+import Control.Monad.IO.Class (MonadIO, liftIO)
 import Control.Monad.Trans.Control (MonadBaseControl)
 import Control.Monad.Trans.Resource (MonadThrow, runResourceT)
 import qualified Data.ByteString.Lazy as BL
@@ -18,44 +18,46 @@ import Data.Conduit.Binary (sourceLbs)
 import Data.List (intercalate)
 import Data.Maybe (fromMaybe)
 import Data.Text (Text)
+import qualified Data.Text.Encoding as TextEncoding
 import qualified Data.Text as T
 import qualified Data.Text.Read as TR
 import Data.Time.Format (parseTimeM)
 import qualified Data.Vector as V
 import Data.XML.Types (Event)
 import Network.HTTP.Base (urlEncode)
-import Network.HTTP.Conduit (simpleHttp)
+import Network.HTTP.Conduit (Request, newManager, httpLbs, parseUrlThrow, requestHeaders, tlsManagerSettings, responseBody)
+import Network.HTTP.Types.Header (hUserAgent)
 import Data.Time.Locale.Compat (defaultTimeLocale)
 import Text.XML.Stream.Parse (parseBytes, def, content, tagNoAttr, tag', requireAttr, attr, force, many, AttrParser)
 import Text.XML (Name(..))
 
-musicBrainzWSLookup :: MonadIO m => Text -> Text -> [Text] -> m BL.ByteString
-musicBrainzWSLookup reqtype param incparams = do
+musicBrainzWSLookup :: MonadIO m => Text -> Text -> Text -> [Text] -> m BL.ByteString
+musicBrainzWSLookup agent reqtype param incparams = do
     let url = "https://musicbrainz.org/ws/2/" ++ T.unpack reqtype ++ "/" ++ T.unpack param ++ incs incparams
-    simpleHttp url
+    userAgentSimpleHttp agent url
     where
         incs [] = ""
         incs xs = ("?inc="++) . intercalate "+" . map T.unpack $ xs
 
-musicBrainzWSSearch :: MonadIO m => Text -> Text -> Maybe Int -> Maybe Int -> m BL.ByteString
-musicBrainzWSSearch reqtype query mlimit moffset = do
+musicBrainzWSSearch :: MonadIO m => Text -> Text -> Text -> Maybe Int -> Maybe Int -> m BL.ByteString
+musicBrainzWSSearch agent reqtype query mlimit moffset = do
     let url = "https://musicbrainz.org/ws/2/" ++ T.unpack reqtype ++ "/?query=" ++ urlEncode (T.unpack query) ++ limit mlimit ++ offset moffset
-    simpleHttp url
+    userAgentSimpleHttp agent url
     where
         limit Nothing = ""
         limit (Just l) = "&limit=" ++ show l
         offset Nothing = ""
         offset (Just o) = "&offset=" ++ show o
 
-getRecordingById :: (MonadBaseControl IO m, MonadIO m, MonadThrow m) => MBID -> m Recording
-getRecordingById mbid = do
-    lbs <- musicBrainzWSLookup "recording" (unMBID mbid) ["artist-credits"]
+getRecordingById :: (MonadBaseControl IO m, MonadIO m, MonadThrow m) => Text -> MBID -> m Recording
+getRecordingById agent mbid = do
+    lbs <- musicBrainzWSLookup agent "recording" (unMBID mbid) ["artist-credits"]
     rs <- runResourceT $ sourceLbs lbs $= parseBytes def $$ sinkRecordings
     return $ head rs
 
-getReleaseById :: (MonadBaseControl IO m, MonadIO m, MonadThrow m) => MBID -> m Release
-getReleaseById mbid = do
-    lbs <- musicBrainzWSLookup "release" (unMBID mbid) ["recordings", "artist-credits"]
+getReleaseById :: (MonadBaseControl IO m, MonadIO m, MonadThrow m) => Text -> MBID -> m Release
+getReleaseById agent mbid = do
+    lbs <- musicBrainzWSLookup agent "release" (unMBID mbid) ["recordings", "artist-credits"]
     rs <- runResourceT $ sourceLbs lbs $= parseBytes def $$ sinkReleases
     return $ head rs
 
@@ -77,7 +79,7 @@ parseRecording = tag' "{http://musicbrainz.org/ns/mmd-2.0#}recording" (requireAt
     return Recording { _recordingId = MBID rid, _recordingTitle = title, _recordingLength = fmap forceReadDec len, _recordingArtistCredit = fromMaybe [] ncs }
 
 parseArtistCredit :: MonadThrow m => Consumer Event m (Maybe ArtistCredit)
-parseArtistCredit = tag' "{http://musicbrainz.org/ns/mmd-2.0#}name-credit" (buggyJoinPhrase) $ \mjp -> force "artist required" (tag' "{http://musicbrainz.org/ns/mmd-2.0#}artist" (requireAttr "id") $ \aid -> do
+parseArtistCredit = tag' "{http://musicbrainz.org/ns/mmd-2.0#}name-credit" buggyJoinPhrase $ \mjp -> force "artist required" (tag' "{http://musicbrainz.org/ns/mmd-2.0#}artist" (requireAttr "id") $ \aid -> do
     name <- tagNoAttr "{http://musicbrainz.org/ns/mmd-2.0#}name" content
     sortName <- tagNoAttr "{http://musicbrainz.org/ns/mmd-2.0#}sort-name" content
     _ <- tagNoAttr "{http://musicbrainz.org/ns/mmd-2.0#}disambiguation" content
@@ -108,8 +110,8 @@ parseRelease = tag' "{http://musicbrainz.org/ns/mmd-2.0#}release" (liftA2 (,) (r
     barcode <- tagNoAttr "{http://musicbrainz.org/ns/mmd-2.0#}barcode" content
     amazonASIN <- tagNoAttr "{http://musicbrainz.org/ns/mmd-2.0#}asin" content
     coverArtArchive <- parseCoverArtArchive
-    _ <- tagNoAttr "{http://musicbrainz.org/ns/mmd-2.0#}label-info-list" $ parseLabelInfo
-    media <- tag' "{http://musicbrainz.org/ns/mmd-2.0#}medium-list" (requireAttr "count") $ \_ -> (tagNoAttr "{http://musicbrainz.org/ns/mmd-2.0#}track-count" content >> many parseMedium)
+    _ <- tagNoAttr "{http://musicbrainz.org/ns/mmd-2.0#}label-info-list" parseLabelInfo
+    media <- tag' "{http://musicbrainz.org/ns/mmd-2.0#}medium-list" (requireAttr "count") $ const (tagNoAttr "{http://musicbrainz.org/ns/mmd-2.0#}track-count" content >> many parseMedium)
     return (maybe 0 forceReadDec score, Release {
         _releaseId = MBID rid
       , _releaseTitle = title
@@ -231,7 +233,7 @@ parseArea = tag' "{http://musicbrainz.org/ns/mmd-2.0#}area" (requireAttr "id") $
     }
 
 parseISO3166Code :: MonadThrow m => Consumer Event m (Maybe ISO3166Code)
-parseISO3166Code = tagNoAttr "{http://musicbrainz.org/ns/mmd-2.0#}iso-3166-1-code" (content >>= (return . ISO3166Code))
+parseISO3166Code = tagNoAttr "{http://musicbrainz.org/ns/mmd-2.0#}iso-3166-1-code" (ISO3166Code <$> content)
 
 parseCoverArtArchive :: MonadThrow m => Consumer Event m (Maybe CoverArtArchive)
 parseCoverArtArchive = tagNoAttr "{http://musicbrainz.org/ns/mmd-2.0#}cover-art-archive" $ do
@@ -246,8 +248,21 @@ parseCoverArtArchive = tagNoAttr "{http://musicbrainz.org/ns/mmd-2.0#}cover-art-
     , _coverArtArchiveBack = if back == Just "true" then Just True else Just False
     }
 
-searchReleasesByArtistAndRelease :: (MonadIO m, MonadBaseControl IO m, MonadThrow m) => Text -> Text -> Maybe Int -> Maybe Int -> m [(Int, Release)]
-searchReleasesByArtistAndRelease artist release mlimit moffset = do
-    lbs <- musicBrainzWSSearch "release" (T.concat ["artist:\"", artist, "\" AND release:\"", release, "\""]) mlimit moffset
-    rs <- runResourceT $ sourceLbs lbs $= parseBytes def $$ sinkReleaseList
-    return rs
+searchReleasesByArtistAndRelease :: (MonadIO m, MonadBaseControl IO m, MonadThrow m) => Text -> Text -> Text -> Maybe Int -> Maybe Int -> m [(Int, Release)]
+searchReleasesByArtistAndRelease agent artist release mlimit moffset = do
+    lbs <- musicBrainzWSSearch agent "release" (T.concat ["artist:\"", artist, "\" AND release:\"", release, "\""]) mlimit moffset
+    runResourceT $ sourceLbs lbs $= parseBytes def $$ sinkReleaseList
+
+userAgentSimpleHttp :: MonadIO m => Text -> String -> m BL.ByteString
+userAgentSimpleHttp userAgent url = liftIO $ do
+  man <- newManager tlsManagerSettings
+  initReq <- liftIO $ parseUrlThrow url
+  let utf8UserAgent = TextEncoding.encodeUtf8 userAgent
+      req = initReq {
+    requestHeaders = (hUserAgent, utf8UserAgent) : requestHeaders initReq
+  }
+  responseBody <$> httpLbs (setConnectionClose req) man
+
+  where
+  setConnectionClose :: Request -> Request
+  setConnectionClose req = req{requestHeaders = ("Connection", "close") : requestHeaders req}
