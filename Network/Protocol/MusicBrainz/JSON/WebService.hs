@@ -62,7 +62,9 @@ userAgentSimpleHttp userAgent url = liftIO $ do
       req = initReq {
     requestHeaders = (hUserAgent, utf8UserAgent) : requestHeaders initReq
   }
-  responseBody <$> httpLbs (setConnectionClose req) man
+  body <- responseBody <$> httpLbs (setConnectionClose req) man
+  print body
+  return body
 
   where
   setConnectionClose :: Request -> Request
