@@ -8,28 +8,30 @@ module Network.Protocol.MusicBrainz.JSON.WebService (
 
 import Network.Protocol.MusicBrainz.Types
 
-import Control.Monad.IO.Class (MonadIO)
+import Control.Monad.IO.Class (MonadIO, liftIO)
 import Data.Aeson (eitherDecode)
 import qualified Data.ByteString.Lazy as BL
 import Data.List (intercalate)
 import Data.Text (Text)
 import qualified Data.Text as T
+import qualified Data.Text.Encoding as TextEncoding
 import Network.HTTP.Base (urlEncode)
-import Network.HTTP.Conduit (simpleHttp)
+import Network.HTTP.Conduit (Request, newManager, httpLbs, parseUrlThrow, requestHeaders, tlsManagerSettings, responseBody)
+import Network.HTTP.Types.Header (hUserAgent)
 
-musicBrainzWSLookup :: MonadIO m => Text -> Text -> [Text] -> m BL.ByteString
-musicBrainzWSLookup reqtype param incparams = do
+musicBrainzWSLookup :: MonadIO m => Text -> Text -> Text -> [Text] -> m BL.ByteString
+musicBrainzWSLookup agent reqtype param incparams = do
     let url = "https://musicbrainz.org/ws/2/" ++ T.unpack reqtype ++ "/" ++ T.unpack param ++ incs incparams ++ fj
-    simpleHttp url
+    userAgentSimpleHttp agent url
     where
         incs [] = ""
         incs xs = ("?inc="++) . intercalate "+" . map T.unpack $ xs
         fj = "&fmt=json"
 
-musicBrainzWSSearch :: MonadIO m => Text -> Text -> Maybe Int -> Maybe Int -> m BL.ByteString
-musicBrainzWSSearch reqtype query mlimit moffset = do
+musicBrainzWSSearch :: MonadIO m => Text -> Text -> Text -> Maybe Int -> Maybe Int -> m BL.ByteString
+musicBrainzWSSearch agent reqtype query mlimit moffset = do
     let url = "https://musicbrainz.org/ws/2/" ++ T.unpack reqtype ++ "/?query=" ++ urlEncode (T.unpack query) ++ limit mlimit ++ offset moffset ++ fj
-    simpleHttp url
+    userAgentSimpleHttp agent url
     where
         limit Nothing = ""
         limit (Just l) = "&limit=" ++ show l
@@ -37,17 +39,31 @@ musicBrainzWSSearch reqtype query mlimit moffset = do
         offset (Just o) = "&offset=" ++ show o
         fj = "&fmt=json"
 
-getRecordingById :: MonadIO m => MBID -> m (Either String Recording)
-getRecordingById mbid = do
-    lbs <- musicBrainzWSLookup "recording" (unMBID mbid) ["artist-credits"]
+getRecordingById :: MonadIO m => Text -> MBID -> m (Either String Recording)
+getRecordingById agent mbid = do
+    lbs <- musicBrainzWSLookup agent "recording" (unMBID mbid) ["artist-credits"]
     return $ eitherDecode lbs
 
-getReleaseById :: MonadIO m => MBID -> m (Either String Release)
-getReleaseById mbid = do
-    lbs <- musicBrainzWSLookup "release" (unMBID mbid) ["recordings", "artist-credits"]
+getReleaseById :: MonadIO m => Text -> MBID -> m (Either String Release)
+getReleaseById agent mbid = do
+    lbs <- musicBrainzWSLookup agent "release" (unMBID mbid) ["recordings", "artist-credits"]
     return $ eitherDecode lbs
 
-searchReleasesByArtistAndRelease :: MonadIO m => Text -> Text -> Maybe Int -> Maybe Int -> m (Either String [(Int, Release)])
-searchReleasesByArtistAndRelease artist release mlimit moffset = do
-    lbs <- musicBrainzWSSearch "release" (T.concat ["artist:\"", artist, "\" AND release:\"", release, "\""]) mlimit moffset
+searchReleasesByArtistAndRelease :: MonadIO m => Text -> Text -> Text -> Maybe Int -> Maybe Int -> m (Either String [(Int, Release)])
+searchReleasesByArtistAndRelease agent artist release mlimit moffset = do
+    lbs <- musicBrainzWSSearch agent "release" (T.concat ["artist:\"", artist, "\" AND release:\"", release, "\""]) mlimit moffset
     return $ eitherDecode lbs
+
+userAgentSimpleHttp :: MonadIO m => Text -> String -> m BL.ByteString
+userAgentSimpleHttp userAgent url = liftIO $ do
+  man <- newManager tlsManagerSettings
+  initReq <- liftIO $ parseUrlThrow url
+  let utf8UserAgent = TextEncoding.encodeUtf8 userAgent
+      req = initReq {
+    requestHeaders = (hUserAgent, utf8UserAgent) : requestHeaders initReq
+  }
+  responseBody <$> httpLbs (setConnectionClose req) man
+
+  where
+  setConnectionClose :: Request -> Request
+  setConnectionClose req = req{requestHeaders = ("Connection", "close") : requestHeaders req}
