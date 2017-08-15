@@ -9,6 +9,7 @@ module Network.Protocol.MusicBrainz.XML2.WebService (
 import Network.Protocol.MusicBrainz.Types
 
 import Control.Applicative (liftA2, (<|>))
+import Control.Monad (join)
 import Control.Monad.IO.Class (MonadIO, liftIO)
 import Control.Monad.Trans.Control (MonadBaseControl)
 import Control.Monad.Trans.Resource (MonadThrow, runResourceT)
@@ -142,11 +143,12 @@ parseTextRepresentation = tagNoAttr "{http://musicbrainz.org/ns/mmd-2.0#}text-re
     }
 
 parseMedium :: MonadThrow m => Consumer Event m (Maybe Medium)
-parseMedium = tagNoAttr "{http://musicbrainz.org/ns/mmd-2.0#}medium" $ do
+parseMedium = join <$>
+  tagNoAttr "{http://musicbrainz.org/ns/mmd-2.0#}medium" (do
     title <- tagNoAttr "{http://musicbrainz.org/ns/mmd-2.0#}title" content
     position <- tagNoAttr "{http://musicbrainz.org/ns/mmd-2.0#}position" content
     format <- tagNoAttr "{http://musicbrainz.org/ns/mmd-2.0#}format" content
-    Just med <- tag' "{http://musicbrainz.org/ns/mmd-2.0#}track-list" (liftA2 (,) (requireAttr "count") (attr "offset")) $ \(c,o) -> do -- not Just
+    tag' "{http://musicbrainz.org/ns/mmd-2.0#}track-list" (liftA2 (,) (requireAttr "count") (attr "offset")) $ \(c,o) -> do -- not Just
         tracks <- many parseTrack
         return Medium {
             _mediumTitle = title
@@ -154,9 +156,9 @@ parseMedium = tagNoAttr "{http://musicbrainz.org/ns/mmd-2.0#}medium" $ do
           , _mediumFormat = format
           , _mediumTrackCount = forceReadDec c
           , _mediumTrackOffset = fmap forceReadDec o
-          , _mediumTrackList = Just tracks -- not Just
+          , _mediumTrackList = tracks -- not Just
           }
-    return med
+  )
 
 parseTrack :: MonadThrow m => Consumer Event m (Maybe Track)
 parseTrack = tag' "{http://musicbrainz.org/ns/mmd-2.0#}track" (requireAttr "id") $ \i -> do

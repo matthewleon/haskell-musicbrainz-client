@@ -85,7 +85,7 @@ data Medium = Medium {
   , _mediumFormat :: Maybe Text
   , _mediumTrackCount :: Integer
   , _mediumTrackOffset :: Maybe Integer
-  , _mediumTrackList :: Maybe [Track]
+  , _mediumTrackList :: [Track]
 } deriving (Eq, Show)
 
 instance FromJSON Medium where
@@ -95,7 +95,7 @@ instance FromJSON Medium where
                                  v .:? "format" <*>
                                  v .:  "track-count" <*>
                                  v .:? "track-offset" <*>
-                                 v .:? "tracks"
+                                 v .:  "tracks"
     parseJSON _          = mzero
 
 data Track = Track {
