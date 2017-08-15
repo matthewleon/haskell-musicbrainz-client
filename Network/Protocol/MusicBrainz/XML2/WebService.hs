@@ -35,6 +35,7 @@ import Text.XML (Name(..))
 musicBrainzWSLookup :: MonadIO m => Text -> Text -> Text -> [Text] -> m BL.ByteString
 musicBrainzWSLookup agent reqtype param incparams = do
     let url = "https://musicbrainz.org/ws/2/" ++ T.unpack reqtype ++ "/" ++ T.unpack param ++ incs incparams
+    liftIO $ print url
     userAgentSimpleHttp agent url
     where
         incs [] = ""
@@ -43,6 +44,7 @@ musicBrainzWSLookup agent reqtype param incparams = do
 musicBrainzWSSearch :: MonadIO m => Text -> Text -> Text -> Maybe Int -> Maybe Int -> m BL.ByteString
 musicBrainzWSSearch agent reqtype query mlimit moffset = do
     let url = "https://musicbrainz.org/ws/2/" ++ T.unpack reqtype ++ "/?query=" ++ urlEncode (T.unpack query) ++ limit mlimit ++ offset moffset
+    liftIO $ print url
     userAgentSimpleHttp agent url
     where
         limit Nothing = ""
