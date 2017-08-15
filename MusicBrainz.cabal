@@ -22,10 +22,7 @@ library
                , conduit       >= 1.0.0
                , conduit-extra >= 1.0.0
                , text
-               , time
                , resourcet
-               , time-locale-compat
-               , vector        >= 0.9
                , xml-types     >= 0.3
                , http-conduit  >= 1.8.8
                , http-types    >= 0.6
