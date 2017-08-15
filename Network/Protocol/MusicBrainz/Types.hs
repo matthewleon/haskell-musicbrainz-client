@@ -165,7 +165,8 @@ data ReleaseGroup = ReleaseGroup {
   , _releaseGroupType :: Maybe Text
   , _releaseGroupTitle :: Maybe Text
   , _releaseGroupFirstReleaseDate :: Maybe Text
-  , _releaseGroupPrimaryType :: Maybe Text
+  , _releaseGroupPrimaryType :: Maybe (MBID, Text)
+  , _releaseGroupSecondaryTypes :: [(MBID, Text)]
   , _releaseGroupArtistCredit :: [ArtistCredit]
 } deriving (Eq, Show)
 
