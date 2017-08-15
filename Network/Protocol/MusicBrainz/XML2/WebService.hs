@@ -7,7 +7,7 @@ import Control.Monad.IO.Class (MonadIO, liftIO)
 import Control.Monad.Trans.Control (MonadBaseControl)
 import Control.Monad.Trans.Resource (MonadThrow, runResourceT, throwM)
 import qualified Data.ByteString.Lazy as BL
-import Data.Conduit (Consumer, ($=), ($$))
+import Data.Conduit (Consumer, (=$=), ($$))
 import Data.Conduit.Binary (sourceLbs)
 import Data.Monoid ((<>))
 import Data.Text (Text)
@@ -53,7 +53,7 @@ parseRelease = tag' "{http://musicbrainz.org/ns/mmd-2.0#}release" (liftA2 (,) (r
 searchReleasesByArtistAndRelease :: (MonadIO m, MonadBaseControl IO m, MonadThrow m) => Text -> Text -> Text -> Maybe Int -> Maybe Int -> m [(Int, MB.MBID)]
 searchReleasesByArtistAndRelease agent artist release mlimit moffset = do
     lbs <- musicBrainzWSSearch agent "release" (T.concat ["artist:\"", artist, "\" AND release:\"", release, "\""]) mlimit moffset
-    runResourceT $ sourceLbs lbs $= parseBytes def $$ sinkReleaseList
+    runResourceT $ sourceLbs lbs =$= parseBytes def $$ sinkReleaseList
 
 userAgentSimpleHttp :: MonadIO m => Text -> String -> m BL.ByteString
 userAgentSimpleHttp userAgent url = liftIO $ do
