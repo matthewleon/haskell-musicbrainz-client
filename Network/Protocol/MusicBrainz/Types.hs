@@ -161,8 +161,8 @@ instance FromJSON Artist where
     parseJSON _          = mzero
 
 data ReleaseGroup = ReleaseGroup {
-    _releaseGroupId :: MBID
-  , _releaseGroupType :: Text
+    _releaseGroupId :: Maybe MBID
+  , _releaseGroupType :: Maybe Text
   , _releaseGroupTitle :: Maybe Text
   , _releaseGroupFirstReleaseDate :: Maybe Text
   , _releaseGroupPrimaryType :: Maybe Text
