@@ -176,9 +176,7 @@ parseReleaseGroup :: MonadThrow m => Consumer Event m (Maybe ReleaseGroup)
 parseReleaseGroup = tag' "{http://musicbrainz.org/ns/mmd-2.0#}release-group" (liftA2 (,) (attr "type") (attr "id")) $ \(t,i) -> do
     title <- tagNoAttr "{http://musicbrainz.org/ns/mmd-2.0#}title" content
     frd <- tagNoAttr "{http://musicbrainz.org/ns/mmd-2.0#}first-release-date" content
-    pt <- tag' "{http://musicbrainz.org/ns/mmd-2.0#}primary-type" (requireAttr "id") $ \typeId -> do
-      typeName <- content
-      return (MBID typeId, typeName)
+    pt <- tagNoAttr "{http://musicbrainz.org/ns/mmd-2.0#}primary-type" content
     sts <- tagNoAttr "{http://musicbrainz.org/ns/mmd-2.0#}secondary-type-list" $ many parseSecondaryType
     ncs <- tagNoAttr "{http://musicbrainz.org/ns/mmd-2.0#}artist-credit" $ many parseArtistCredit
     return ReleaseGroup {
@@ -192,10 +190,8 @@ parseReleaseGroup = tag' "{http://musicbrainz.org/ns/mmd-2.0#}release-group" (li
     }
 
     where
-    parseSecondaryType :: MonadThrow m => Consumer Event m (Maybe (MBID, Text))
-    parseSecondaryType = tag' "{http://musicbrainz.org/ns/mmd-2.0#}secondary-type" (requireAttr "id") $ \typeId -> do
-      typeName <- content
-      return (MBID typeId, typeName)
+    parseSecondaryType :: MonadThrow m => Consumer Event m (Maybe Text)
+    parseSecondaryType = tagNoAttr "{http://musicbrainz.org/ns/mmd-2.0#}secondary-type" content
 
 
 parseLabelInfo :: MonadThrow m => Consumer Event m (Maybe LabelInfo)
