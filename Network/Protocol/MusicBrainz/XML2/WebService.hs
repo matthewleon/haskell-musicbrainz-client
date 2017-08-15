@@ -5,10 +5,11 @@ module Network.Protocol.MusicBrainz.XML2.WebService (searchReleasesByArtistAndRe
 import Control.Applicative (liftA2)
 import Control.Monad.IO.Class (MonadIO, liftIO)
 import Control.Monad.Trans.Control (MonadBaseControl)
-import Control.Monad.Trans.Resource (MonadThrow, runResourceT)
+import Control.Monad.Trans.Resource (MonadThrow, runResourceT, throwM)
 import qualified Data.ByteString.Lazy as BL
 import Data.Conduit (Consumer, ($=), ($$))
 import Data.Conduit.Binary (sourceLbs)
+import Data.Monoid ((<>))
 import Data.Text (Text)
 import qualified Data.Text.Encoding as TextEncoding
 import qualified Data.Text as T
@@ -17,7 +18,9 @@ import Data.XML.Types (Event)
 import Network.HTTP.Base (urlEncode)
 import Network.HTTP.Conduit (Request, newManager, httpLbs, parseUrlThrow, requestHeaders, tlsManagerSettings, responseBody)
 import Network.HTTP.Types.Header (hUserAgent)
-import Text.XML.Stream.Parse (parseBytes, def, tag', requireAttr, attr, force, many, ignoreAnyTreeContent)
+import Text.XML.Stream.Parse (XmlException(XmlException), parseBytes, def, tag', requireAttr, attr, force, many, ignoreAnyTreeContent)
+
+import qualified Network.Protocol.MusicBrainz.Types as MB
 
 musicBrainzWSSearch :: MonadIO m => Text -> Text -> Text -> Maybe Int -> Maybe Int -> m BL.ByteString
 musicBrainzWSSearch agent reqtype query mlimit moffset = do
@@ -29,19 +32,22 @@ musicBrainzWSSearch agent reqtype query mlimit moffset = do
         offset Nothing = ""
         offset (Just o) = "&offset=" ++ show o
 
-sinkReleaseList :: MonadThrow m => Consumer Event m [(Int, Text)]
+sinkReleaseList :: MonadThrow m => Consumer Event m [(Int, MB.MBID)]
 sinkReleaseList = force "metadata required" (tag' "{http://musicbrainz.org/ns/mmd-2.0#}metadata" (attr "created") $ \_ ->
     force "release-list required" (tag' "{http://musicbrainz.org/ns/mmd-2.0#}release-list" (liftA2 (,) (requireAttr "count") (requireAttr "offset")) $ \_ -> many parseRelease))
 
 forceReadDec :: Integral a => Text -> a
 forceReadDec = (\(Right (d, _)) -> d) . TR.decimal
 
-parseRelease :: MonadThrow m => Consumer Event m (Maybe (Int, Text))
+parseRelease :: MonadThrow m => Consumer Event m (Maybe (Int, MB.MBID))
 parseRelease = tag' "{http://musicbrainz.org/ns/mmd-2.0#}release" (liftA2 (,) (requireAttr "id") (attr "{http://musicbrainz.org/ns/ext#-2.0}score")) $ \(rid,score) -> do
     _ <- many ignoreAnyTreeContent
-    return (maybe 0 forceReadDec score, rid)
+    case MB.fromText rid of
+      Nothing -> throwM $
+        XmlException (T.unpack $ "Cannot parse MBID from: " <> rid) Nothing
+      Just mbid -> return (maybe 0 forceReadDec score, mbid)
 
-searchReleasesByArtistAndRelease :: (MonadIO m, MonadBaseControl IO m, MonadThrow m) => Text -> Text -> Text -> Maybe Int -> Maybe Int -> m [(Int, Text)]
+searchReleasesByArtistAndRelease :: (MonadIO m, MonadBaseControl IO m, MonadThrow m) => Text -> Text -> Text -> Maybe Int -> Maybe Int -> m [(Int, MB.MBID)]
 searchReleasesByArtistAndRelease agent artist release mlimit moffset = do
     lbs <- musicBrainzWSSearch agent "release" (T.concat ["artist:\"", artist, "\" AND release:\"", release, "\""]) mlimit moffset
     runResourceT $ sourceLbs lbs $= parseBytes def $$ sinkReleaseList
