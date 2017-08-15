@@ -109,7 +109,7 @@ parseRelease = tag' "{http://musicbrainz.org/ns/mmd-2.0#}release" (liftA2 (,) (r
     _ <- parseReleaseGroup
     date <- tagNoAttr "{http://musicbrainz.org/ns/mmd-2.0#}date" content
     country <- tagNoAttr "{http://musicbrainz.org/ns/mmd-2.0#}country" content
-    rel <- tag' "{http://musicbrainz.org/ns/mmd-2.0#}release-event-list" (requireAttr "count") $ \_ -> many parseReleaseEvent
+    rel <- tagNoAttr "{http://musicbrainz.org/ns/mmd-2.0#}release-event-list" $ many parseReleaseEvent
     barcode <- tagNoAttr "{http://musicbrainz.org/ns/mmd-2.0#}barcode" content
     amazonASIN <- tagNoAttr "{http://musicbrainz.org/ns/mmd-2.0#}asin" content
     coverArtArchive <- parseCoverArtArchive
