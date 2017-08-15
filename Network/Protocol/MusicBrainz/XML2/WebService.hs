@@ -13,7 +13,7 @@ import Control.Monad.IO.Class (MonadIO, liftIO)
 import Control.Monad.Trans.Control (MonadBaseControl)
 import Control.Monad.Trans.Resource (MonadThrow, runResourceT)
 import qualified Data.ByteString.Lazy as BL
-import qualified Data.ByteString.Lazy.Char8 as C
+--import qualified Data.ByteString.Lazy.Char8 as C
 import Data.Conduit (Consumer, ($=), ($$))
 import Data.Conduit.Binary (sourceLbs)
 import Data.List (intercalate)
@@ -252,7 +252,9 @@ parseCoverArtArchive = tagNoAttr "{http://musicbrainz.org/ns/mmd-2.0#}cover-art-
 searchReleasesByArtistAndRelease :: (MonadIO m, MonadBaseControl IO m, MonadThrow m) => Text -> Text -> Text -> Maybe Int -> Maybe Int -> m [(Int, Release)]
 searchReleasesByArtistAndRelease agent artist release mlimit moffset = do
     lbs <- musicBrainzWSSearch agent "release" (T.concat ["artist:\"", artist, "\" AND release:\"", release, "\""]) mlimit moffset
-    runResourceT $ sourceLbs lbs $= parseBytes def $$ sinkReleaseList
+    releases <- runResourceT $ sourceLbs lbs $= parseBytes def $$ sinkReleaseList
+    liftIO $ print releases
+    return releases
 
 userAgentSimpleHttp :: MonadIO m => Text -> String -> m BL.ByteString
 userAgentSimpleHttp userAgent url = liftIO $ do
@@ -262,9 +264,8 @@ userAgentSimpleHttp userAgent url = liftIO $ do
       req = initReq {
     requestHeaders = (hUserAgent, utf8UserAgent) : requestHeaders initReq
   }
-  res <- responseBody <$> httpLbs (setConnectionClose req) man
-  putStrLn $ C.unpack res
-  return res
+  responseBody <$> httpLbs (setConnectionClose req) man
+  --putStrLn $ C.unpack res
 
   where
   setConnectionClose :: Request -> Request
