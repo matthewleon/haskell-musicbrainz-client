@@ -13,6 +13,7 @@ import Data.UUID (UUID)
 import qualified Data.UUID as UUID
 
 newtype MBID = MBID UUID
+  deriving (Show, Eq, Ord)
 
 fromUUID :: UUID -> MBID
 fromUUID = MBID
