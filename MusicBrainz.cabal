@@ -15,8 +15,6 @@ extra-source-files:  AUTHORS
 
 library
   exposed-modules: Network.Protocol.MusicBrainz.Types
-                 , Network.Protocol.MusicBrainz.Utils
-                 , Network.Protocol.MusicBrainz.JSON.WebService
                  , Network.Protocol.MusicBrainz.XML2.WebService
   build-depends: base          >= 4.5     && <5
                , transformers  >= 0.3
@@ -34,7 +32,6 @@ library
                , http-types    >= 0.6
                , xml-conduit   >= 1.5
                , HTTP          >= 4000.0
-               , aeson         >= 0.6.1
   ghc-options: -Wall
 
 source-repository head
