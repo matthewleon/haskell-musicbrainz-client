@@ -18,7 +18,7 @@ import Data.XML.Types (Event)
 import Network.HTTP.Base (urlEncode)
 import Network.HTTP.Conduit (Request, newManager, httpLbs, parseUrlThrow, requestHeaders, tlsManagerSettings, responseBody)
 import Network.HTTP.Types.Header (hUserAgent)
-import Text.XML.Stream.Parse (XmlException(XmlException), parseBytes, def, tag', requireAttr, attr, force, many, ignoreAnyTreeContent)
+import Text.XML.Stream.Parse (XmlException(XmlException), parseBytes, def, tag', tagIgnoreAttrs, requireAttr, attr, force, many, ignoreAnyTreeContent)
 
 import qualified Network.Protocol.MusicBrainz.Types as MB
 
@@ -33,8 +33,11 @@ musicBrainzWSSearch agent reqtype query mlimit moffset = do
         offset (Just o) = "&offset=" ++ show o
 
 sinkReleaseList :: MonadThrow m => Consumer Event m [(Int, MB.MBID)]
-sinkReleaseList = force "metadata required" (tag' "{http://musicbrainz.org/ns/mmd-2.0#}metadata" (attr "created") $ \_ ->
-    force "release-list required" (tag' "{http://musicbrainz.org/ns/mmd-2.0#}release-list" (liftA2 (,) (requireAttr "count") (requireAttr "offset")) $ \_ -> many parseRelease))
+sinkReleaseList =
+  force "metadata required" (tagIgnoreAttrs "{http://musicbrainz.org/ns/mmd-2.0#}metadata" $
+    force "release-list required" (tagIgnoreAttrs "{http://musicbrainz.org/ns/mmd-2.0#}release-list" $
+      many parseRelease
+  ))
 
 forceReadDec :: Integral a => Text -> a
 forceReadDec = (\(Right (d, _)) -> d) . TR.decimal
