@@ -13,6 +13,7 @@ import Control.Monad.IO.Class (MonadIO, liftIO)
 import Control.Monad.Trans.Control (MonadBaseControl)
 import Control.Monad.Trans.Resource (MonadThrow, runResourceT)
 import qualified Data.ByteString.Lazy as BL
+import qualified Data.ByteString.Lazy.Char8 as C
 import Data.Conduit (Consumer, ($=), ($$))
 import Data.Conduit.Binary (sourceLbs)
 import Data.List (intercalate)
@@ -262,7 +263,7 @@ userAgentSimpleHttp userAgent url = liftIO $ do
     requestHeaders = (hUserAgent, utf8UserAgent) : requestHeaders initReq
   }
   res <- responseBody <$> httpLbs (setConnectionClose req) man
-  print res
+  putStrLn $ C.unpack res
   return res
 
   where
